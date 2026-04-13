@@ -1,0 +1,20 @@
+[project]
+name = "capitalone-workshop"
+version = "0.1.0"
+description = "Capital One workshop: Deep Agents, Deploy & LangSmith"
+requires-python = ">=3.11"
+dependencies = [
+    "deepagents>=0.4.12",
+    "ipywidgets>=8.1.0",
+    "jupyter>=1.1.1",
+    "langchain>=1.0.1",
+    "langchain-openai>=1.0.1",
+    "langgraph>=1.0.1",
+    "langsmith>=0.4.37",
+    "notebook>=7.4.7",
+    "python-dotenv>=1.1.1",
+    "tavily-python>=0.7.21",
+]
+
+[tool.setuptools]
+packages = ["agents", "utils"]

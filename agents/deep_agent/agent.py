@@ -61,7 +61,7 @@ def backend_factory(rt):
     """FilesystemBackend for disk access, /memories/ routed to StoreBackend."""
     return CompositeBackend(
         default=FilesystemBackend(root_dir=AGENT_DIR, virtual_mode=True),
-        routes={"/memories/": StoreBackend(rt)},
+        routes={"/memories/": StoreBackend()},
     )
 
 

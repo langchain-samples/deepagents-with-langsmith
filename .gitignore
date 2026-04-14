@@ -2,3 +2,5 @@
 .env
 .ipynb_checkpoints/
 .claude/
+__pycache__/
+.langgraph_api/

@@ -97,5 +97,17 @@ workshop/
 └── .env.example
 ```
 
+## Memory-backed deployment script
+
+This repo also includes a one-file deployment script that creates a deep agent with a
+`CompositeBackend` and Context Hub-backed `/memories/`, then wires a LangSmith issues board.
+
+```bash
+uv run python agents/memory_backed_agent/deploy_memory_backed_agent.py \
+  --agent-name my-agent
+```
+
+See [`agents/memory_backed_agent/README.md`](agents/memory_backed_agent/README.md) for details.
+
 **Deploy fails with 403 / permission denied**
 Your LangSmith API key needs deployment permissions. Use a service key (`lsv2_sk_...`), not a personal access token (`lsv2_pt_...`).

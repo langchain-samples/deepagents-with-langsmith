@@ -1,63 +1,65 @@
 # memory-backed-agent
 
-A minimal one-file example that treats Context Hub as a living knowledge base:
+Deploy a Deep Agent that uses Context Hub for durable memory and LangSmith Engine
+for automated issue discovery from production traces.
 
-- `/memories/` is durable in Context Hub.
-- default backend stays thread-scoped (`StateBackend`).
-- one script defines the graph and auto-wires a LangSmith issues board to the same Context Hub repo handle.
+This example is intentionally one file: `deploy_memory_backed_agent.py`, which:
 
-## Single code file
+- keeps thread-scoped state in `StateBackend`
+- routes `/memories/` to `ContextHubBackend` for durable, versioned memory
+- deploys the graph with `langgraph deploy`
+- wires LangSmith issues analysis to the same Context Hub repo handle
 
-- `deploy_memory_backed_agent.py`
-  - defines `agent` with `CompositeBackend` + `ContextHubBackend`
-  - deploys the graph (`langgraph deploy`)
-  - create-or-patch wires `/issues-agent`
+## Continual learning with Context Hub
 
-## Backend pattern
+Production agents hit edge cases that initial context does not cover.
 
-```python
-backend = CompositeBackend(
-    default=StateBackend(),  # thread-scoped
-    routes={
-        "/memories/": ContextHubBackend("my-agent"),  # durable in Context Hub
-    },
-)
+In this pattern, the same repo handle backs both `/memories/` and LangSmith
+Engine, so issue triage and context updates stay connected.
 
-agent = create_deep_agent(
-    model=init_chat_model(model="anthropic:claude-sonnet-4-6"),
-    backend=backend,
-)
-```
+## How LangSmith Engine identifies issues
 
-## Prerequisites
+After deployment, the script upserts the LangSmith issues board for the tracing
+project:
 
-Set these environment variables:
+LangSmith Engine then runs on a schedule, analyzes traces, and files issues
+against the same Context Hub repo handle your agent uses for `/memories/`.
 
-- `ANTHROPIC_API_KEY`
+## Required environment variables
+
 - `LANGSMITH_API_KEY` (or `LANGCHAIN_API_KEY`)
+- `ANTHROPIC_API_KEY` (unless `DEEPAGENT_MODEL` points to a different provider and that provider key is set)
 
-Optional:
+Use a LangSmith service key (`lsv2_sk_...`) with deploy permissions.
 
-- `LANGSMITH_ENDPOINT` / `LANGCHAIN_ENDPOINT`
+## Optional environment variables
+
+- `DEEPAGENT_MODEL` (default: `anthropic:claude-sonnet-4-6`)
+- `LANGSMITH_ENDPOINT` or `LANGCHAIN_ENDPOINT` (default: `https://api.smith.langchain.com`)
 - `LANGSMITH_TENANT_ID`
-- `DEEPAGENT_MODEL`
 
 ## Run
 
-```bash
-# From repo root, install environment
-uv sync
+From the repository root:
 
-# Deploy + auto-wire issues board
-uv run python agents/memory_backed_agent/deploy_memory_backed_agent.py \
-  --agent-name my-agent
+```bash
+uv sync
+uv run python agents/memory_backed_agent/deploy_memory_backed_agent.py --agent-name my-agent
 ```
 
-## What the wiring does
+## What `--agent-name` controls
 
-After resolving the deployed tracing project id, the script:
+`--agent-name` (default: `my-agent`) is reused for:
 
-1. `POST /v1/platform/sessions/{session_id}/issues-agent`
-2. If `409 conflict`, `PATCH` the existing board with `context_hub_repo_handle`
+- deployed graph name (`langgraph deploy --name ...`)
+- Context Hub repo handle used by `/memories/`
+- tracing project lookup used for issues-board wiring
 
-Context Hub repo creation defaults to `source="internal"`.
+## Deployment flow
+
+1. Builds `agent` with `CompositeBackend(default=StateBackend(), routes={"/memories/": ContextHubBackend(agent_name)})`.
+2. Runs `langgraph deploy` for this file.
+3. Ensures the Context Hub repo exists for `{agent_name}` and creates it with `source="internal"` when missing.
+4. Resolves the deployed tracing project id from the project name.
+5. Calls `POST /v1/platform/sessions/{session_id}/issues-agent`.
+6. If create returns `409`, calls `PATCH` to update `context_hub_repo_handle`.

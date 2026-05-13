@@ -22,7 +22,6 @@ AGENT_NAME_ENV = "DEEPAGENT_AGENT_NAME"
 DEFAULT_ENDPOINT = "https://api.smith.langchain.com"
 SUCCESS_CODES = {200, 201}
 HTTP_CONFLICT = 409
-HTTP_NOT_FOUND = 404
 DEPLOY_DEPENDENCIES = [
     ".",
     "deepagents",
@@ -139,26 +138,7 @@ def deploy_graph(*, script_path: Path, agent_name: str) -> None:
 
 def ensure_context_hub_repo_exists(*, repo_handle: str, api_key: str, endpoint: str) -> None:
     """Ensure a Context Hub repo exists for the issues-board handle."""
-    try:
-        from langsmith import Client
-        from langsmith.schemas import FileEntry
-        from langsmith.utils import LangSmithNotFoundError
-    except ImportError as exc:
-        msg = "Missing dependency `langsmith`. Install it with `uv add langsmith`."
-        raise RuntimeError(msg) from exc
-
     identifier = f"-/{repo_handle}"
-    client = Client(api_url=endpoint, api_key=api_key)
-
-    repo_exists = False
-    try:
-        client.pull_agent(identifier)
-        repo_exists = True
-    except LangSmithNotFoundError:
-        repo_exists = False
-    except Exception as exc:
-        msg = f"Failed checking Context Hub repo {identifier}: {exc}"
-        raise RuntimeError(msg) from exc
 
     headers = {
         "x-api-key": api_key,
@@ -167,25 +147,6 @@ def ensure_context_hub_repo_exists(*, repo_handle: str, api_key: str, endpoint: 
     tenant_id = os.getenv("LANGSMITH_TENANT_ID")
     if tenant_id:
         headers["x-tenant-id"] = tenant_id
-
-    if repo_exists:
-        repo_status, repo_body = request_json(
-            method="GET",
-            url=f"{endpoint}/repos/langchain-ai/{repo_handle}",
-            headers=headers,
-        )
-        if repo_status in SUCCESS_CODES:
-            source = json.loads(repo_body).get("repo", {}).get("source")
-            if source != "internal":
-                print(
-                    "Context Hub repo exists but `source` is not `internal`; "
-                    "this can hide it from internal-only Context views."
-                )
-        elif repo_status != HTTP_NOT_FOUND:
-            print(f"Warning: Failed checking repo metadata (HTTP {repo_status}).")
-
-        print(f"Context Hub repo exists: {identifier}")
-        return
 
     create_repo_status, create_repo_body = request_json(
         method="POST",
@@ -202,25 +163,11 @@ def ensure_context_hub_repo_exists(*, repo_handle: str, api_key: str, endpoint: 
         msg = f"Failed creating Context Hub repo metadata (HTTP {create_repo_status}): {create_repo_body[:300]}"
         raise RuntimeError(msg)
 
-    try:
-        client.push_agent(
-            identifier,
-            files={
-                "README.md": FileEntry(
-                    type="file",
-                    content=(
-                        f"{repo_handle}\n\n"
-                        "Initialized by deploy_memory_backed_agent.py for "
-                        "memory-backed agent deployment."
-                    ),
-                )
-            },
-        )
-    except Exception as exc:
-        msg = f"Failed creating Context Hub repo {identifier}: {exc}"
-        raise RuntimeError(msg) from exc
+    if create_repo_status == HTTP_CONFLICT:
+        print(f"Context Hub repo exists: {identifier}")
+        return
 
-    print(f"Created Context Hub repo: {identifier}")
+    print(f"Created Context Hub repo metadata: {identifier}")
 
 
 def session_id_for_project(*, project_name: str, api_key: str, endpoint: str) -> str:

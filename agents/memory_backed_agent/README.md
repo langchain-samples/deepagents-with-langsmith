@@ -24,7 +24,7 @@ backend = CompositeBackend(
 )
 
 agent = create_deep_agent(
-    model=init_chat_model(model="openai:gpt-4.1-mini"),
+    model=init_chat_model(model="anthropic:claude-sonnet-4-6"),
     backend=backend,
 )
 ```
@@ -33,7 +33,7 @@ agent = create_deep_agent(
 
 Set these environment variables:
 
-- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
 - `LANGSMITH_API_KEY` (or `LANGCHAIN_API_KEY`)
 
 Optional:

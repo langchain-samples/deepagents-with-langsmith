@@ -16,7 +16,7 @@ from urllib.request import Request, urlopen
 if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
 
-DEFAULT_MODEL = "openai:gpt-4.1-mini"
+DEFAULT_MODEL = "anthropic:claude-sonnet-4-6"
 DEFAULT_PROJECT_NAME = "my-agent"
 AGENT_NAME_ENV = "DEEPAGENT_AGENT_NAME"
 DEFAULT_ENDPOINT = "https://api.smith.langchain.com"
@@ -26,7 +26,7 @@ HTTP_NOT_FOUND = 404
 DEPLOY_DEPENDENCIES = [
     ".",
     "deepagents",
-    "langchain-openai",
+    "langchain-anthropic",
 ]
 
 
